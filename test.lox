@@ -1,0 +1,17 @@
+// This is a comment test
+(){}!=!
+"string literal"
+0.15
+12.0
+5
+5000
+fun x
+x var
+100
+(
+)
+{
+}
+x
+longerIdentifier
+var x = 123
