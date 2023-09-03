@@ -6,11 +6,11 @@ import (
 )
 
 type Scanner struct {
-	current int32
-	line    int32
+	current int
+	line    int
 	// visitedLinesLen is the number of characters in lines already visited. This
 	// can be subtracted from current to get the position within a line.
-	visitedLinesLen int32
+	visitedLinesLen int
 	source          []byte
 	tokens          []Token
 }
@@ -52,7 +52,7 @@ func (s *Scanner) scanToken() error {
 	c := s.source[s.current]
 	s.current++
 	var peek byte
-	if s.current < int32(len(s.source)) {
+	if s.current < len(s.source) {
 		peek = s.source[s.current]
 	}
 	switch c {
@@ -66,7 +66,7 @@ func (s *Scanner) scanToken() error {
 	case '/':
 		if peek == '/' {
 			// Consume characters until end of line
-			for s.source[s.current] != '\n' && s.current < int32(len(s.source)) {
+			for s.source[s.current] != '\n' && s.current < len(s.source) {
 				s.current++
 			}
 			// Strip off double slash and leading space
@@ -135,14 +135,14 @@ func (s *Scanner) scanToken() error {
 
 		// String handling
 	case '"':
-		for s.source[s.current] != '"' && s.current < int32(len(s.source)) {
+		for s.source[s.current] != '"' && s.current < len(s.source) {
 			if s.source[s.current] == '\n' {
 				s.line++
 				s.visitedLinesLen = s.current
 			}
 			s.current++
 		}
-		if s.current >= int32(len(s.source)) {
+		if s.current >= len(s.source) {
 			return fmt.Errorf("unterminated string (line %d pos %d)", s.line, s.current)
 		}
 		s.current++
@@ -150,13 +150,13 @@ func (s *Scanner) scanToken() error {
 
 	// Numbers
 	case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
-		for s.current < int32(len(s.source)) && isDigit(s.source[s.current]) {
+		for s.current < len(s.source) && isDigit(s.source[s.current]) {
 			s.current++
 		}
 		if s.source[s.current] == '.' && isDigit(s.source[s.current+1]) {
 			// Advance to end of non-integer number
 			s.current++
-			for s.current < int32(len(s.source)) && isDigit(s.source[s.current]) {
+			for s.current < len(s.source) && isDigit(s.source[s.current]) {
 				s.current++
 			}
 		}
@@ -164,7 +164,7 @@ func (s *Scanner) scanToken() error {
 
 	default:
 		if isAlpha(c) {
-			for s.current < int32(len(s.source)) && isAlphaNumeric(s.source[s.current]) {
+			for s.current < len(s.source) && isAlphaNumeric(s.source[s.current]) {
 				s.current++
 			}
 			s.addIdentifier(start)
@@ -176,7 +176,7 @@ func (s *Scanner) scanToken() error {
 }
 
 // addToken appends a non-literal token to the token list
-func (s *Scanner) addToken(start int32, tokenType TokenType) {
+func (s *Scanner) addToken(start int, tokenType TokenType) {
 	s.tokens = append(s.tokens, Token{
 		Type:    tokenType,
 		Lexeme:  string(s.source[start:s.current]),
@@ -189,7 +189,7 @@ func (s *Scanner) addToken(start int32, tokenType TokenType) {
 	})
 }
 
-func (s *Scanner) addLiteralToken(start int32, tokenType TokenType, literal interface{}) {
+func (s *Scanner) addLiteralToken(start int, tokenType TokenType, literal interface{}) {
 	s.tokens = append(s.tokens, Token{
 		Type:    tokenType,
 		Lexeme:  string(s.source[start:s.current]),
@@ -202,7 +202,7 @@ func (s *Scanner) addLiteralToken(start int32, tokenType TokenType, literal inte
 	})
 }
 
-func (s *Scanner) addIdentifier(start int32) {
+func (s *Scanner) addIdentifier(start int) {
 	if keyword, ok := ReservedKeywords[string(s.source[start:s.current])]; ok {
 		s.addToken(start, keyword)
 	} else {

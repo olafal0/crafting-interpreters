@@ -35,8 +35,8 @@ func run(source []byte) error {
 	if err != nil {
 		return err
 	}
-	for _, token := range tokens {
-		fmt.Println(token)
-	}
+	parser := glox.NewParser(tokens)
+	expr := parser.Parse()
+	fmt.Println(glox.ExprToString(expr))
 	return nil
 }

@@ -76,12 +76,63 @@ var (
 		"var":    TokenTypeVar,
 		"while":  TokenTypeWhile,
 	}
+
+	TokenNames = map[TokenType]string{
+		TokenTypeNone:         "none",
+		TokenTypeLeftParen:    "leftparen",
+		TokenTypeRightParen:   "rightparen",
+		TokenTypeLeftBrace:    "leftbrace",
+		TokenTypeRightBrace:   "rightbrace",
+		TokenTypeComma:        "comma",
+		TokenTypeDot:          "dot",
+		TokenTypeMinus:        "minus",
+		TokenTypePlus:         "plus",
+		TokenTypeSemicolon:    "semicolon",
+		TokenTypeSlash:        "slash",
+		TokenTypeStar:         "star",
+		TokenTypeBang:         "bang",
+		TokenTypeBangEqual:    "bangequal",
+		TokenTypeEqual:        "equal",
+		TokenTypeEqualEqual:   "equalequal",
+		TokenTypeGreater:      "greater",
+		TokenTypeGreaterEqual: "greaterequal",
+		TokenTypeLess:         "less",
+		TokenTypeLessEqual:    "lessequal",
+		TokenTypeIdentifier:   "identifier",
+		TokenTypeString:       "string",
+		TokenTypeNumber:       "number",
+		TokenTypeComment:      "comment",
+		TokenTypeAnd:          "and",
+		TokenTypeClass:        "class",
+		TokenTypeElse:         "else",
+		TokenTypeFalse:        "false",
+		TokenTypeFun:          "fun",
+		TokenTypeFor:          "for",
+		TokenTypeIf:           "if",
+		TokenTypeNil:          "nil",
+		TokenTypeOr:           "or",
+		TokenTypePrint:        "print",
+		TokenTypeReturn:       "return",
+		TokenTypeSuper:        "super",
+		TokenTypeThis:         "this",
+		TokenTypeTrue:         "true",
+		TokenTypeVar:          "var",
+		TokenTypeWhile:        "while",
+		TokenTypeEOF:          "eof",
+	}
 )
 
+func (t TokenType) String() string {
+	if name, ok := TokenNames[t]; ok {
+		return name
+	}
+	return fmt.Sprintf("TokenType(%d)", t)
+}
+
 type Pos struct {
-	Line  int32
-	Start int32
-	End   int32
+	Line  int
+	Start int
+	End   int
 }
 
 type Token struct {
@@ -92,7 +143,7 @@ type Token struct {
 }
 
 func (t Token) String() string {
-	return fmt.Sprintf("Line %d [%d:%d] Type %d '%s' %v", t.Pos.Line, t.Pos.Start, t.Pos.End, t.Type, t.Lexeme, t.Literal)
+	return fmt.Sprintf("Line %d [%d:%d] Type %s '%s' %v", t.Pos.Line, t.Pos.Start, t.Pos.End, t.Type, t.Lexeme, t.Literal)
 }
 
 func isDigit(c byte) bool {
