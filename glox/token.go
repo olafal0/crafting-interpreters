@@ -136,7 +136,7 @@ type Pos struct {
 }
 
 func (p Pos) String() string {
-	return fmt.Sprintf("line %d [%d:%d]", p.Line, p.Start, p.End)
+	return fmt.Sprintf("line %d [%d:%d]", p.Line+1, p.Start, p.End)
 }
 
 type Token struct {

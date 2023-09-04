@@ -143,7 +143,7 @@ func (s *Scanner) scanToken() error {
 			s.current++
 		}
 		if s.current >= len(s.source) {
-			return fmt.Errorf("unterminated string (line %d pos %d)", s.line, s.current)
+			return fmt.Errorf("unterminated string (line %d pos %d)", s.line+1, s.current-s.visitedLinesLen)
 		}
 		s.current++
 		s.addLiteralToken(start, TokenTypeString, string(s.source[start+1:s.current-1]))
@@ -169,7 +169,7 @@ func (s *Scanner) scanToken() error {
 			}
 			s.addIdentifier(start)
 		} else {
-			return fmt.Errorf("unexpected character: %c (line %d col %d)", c, s.line, s.current-s.visitedLinesLen)
+			return fmt.Errorf("unexpected character: %c (line %d col %d)", c, s.line+1, s.current-s.visitedLinesLen)
 		}
 	}
 	return nil

@@ -65,12 +65,19 @@ func (p *Parser) consume(t TokenType) error {
 		p.advance()
 		return nil
 	}
-	return fmt.Errorf("expected %v token, got %v (line %d:%d)", t, next.Type, next.Pos.Line, next.Pos.Start)
+	return fmt.Errorf("expected %s token, got %s", t, next)
 }
 
 func (p *Parser) Program() []Stmt {
 	stmts := []Stmt{}
 	for !p.isAtEnd() {
+		// Top-level short circuit: discard comments
+		for p.check(TokenTypeComment) {
+			p.advance()
+		}
+		if p.isAtEnd() {
+			break
+		}
 		stmts = append(stmts, p.Decl())
 	}
 	return stmts
@@ -96,14 +103,17 @@ func (p *Parser) VarDecl() Stmt {
 }
 
 func (p *Parser) Statement() Stmt {
-	if p.match(TokenTypeIf) {
+	switch {
+	case p.match(TokenTypeIf):
 		return p.IfStmt()
-	}
-	if p.match(TokenTypePrint) {
+	case p.match(TokenTypePrint):
 		return p.PrintStmt()
-	}
-	if p.match(TokenTypeLeftBrace) {
+	case p.match(TokenTypeLeftBrace):
 		return p.Block()
+	case p.match(TokenTypeWhile):
+		return p.WhileStmt()
+	case p.match(TokenTypeFor):
+		return p.ForStmt()
 	}
 	return p.ExprStmt()
 }
@@ -118,7 +128,7 @@ func (p *Parser) IfStmt() Stmt {
 	if p.match(TokenTypeElse) {
 		elseBranch = p.Statement()
 	}
-	return IfStmt{conditional: condition, thenBranch: thenBranch, elseBranch: elseBranch}
+	return IfStmt{condition: condition, thenBranch: thenBranch, elseBranch: elseBranch}
 }
 
 func (p *Parser) Block() Stmt {
@@ -150,11 +160,77 @@ func (p *Parser) PrintStmt() Stmt {
 	return PrintStmt{expr: expr}
 }
 
-func (p *Parser) Expression() Expr {
-	// Top-level short circuit: discard comments
-	for p.check(TokenTypeComment) {
-		p.advance()
+func (p *Parser) WhileStmt() Stmt {
+	// consume left paren in case one's provided
+	p.match(TokenTypeLeftParen)
+	condition := p.Expression()
+	// consume left paren in case one's provided
+	// TODO: complain if there was no left paren
+	p.match(TokenTypeRightParen)
+	body := p.Statement()
+	return WhileStmt{condition: condition, body: body}
+}
+
+func (p *Parser) ForStmt() Stmt {
+	// consume left paren in case one's provided
+	p.match(TokenTypeLeftParen)
+	var initializer Stmt
+	if p.match(TokenTypeSemicolon) {
+		initializer = nil
+	} else if p.match(TokenTypeVar) {
+		initializer = p.VarDecl()
+	} else {
+		initializer = p.ExprStmt()
 	}
+
+	var condition Expr
+	if !p.check(TokenTypeSemicolon) {
+		condition = p.Expression()
+	}
+
+	var increment Expr
+	if p.match(TokenTypeSemicolon) {
+		increment = p.Expression()
+	}
+
+	// consume left paren in case one's provided
+	// TODO: complain if there was no left paren
+	p.match(TokenTypeRightParen)
+
+	body := p.Statement()
+	if increment != nil {
+		body = Block{
+			statements: []Stmt{
+				body,
+				ExprStmt{
+					expr: increment,
+				},
+			},
+		}
+	}
+
+	if condition == nil {
+		condition = Literal{
+			value: true,
+		}
+	}
+	body = WhileStmt{
+		condition: condition,
+		body:      body,
+	}
+
+	if initializer != nil {
+		body = Block{
+			statements: []Stmt{
+				initializer,
+				body,
+			},
+		}
+	}
+	return body
+}
+
+func (p *Parser) Expression() Expr {
 	return p.Assignment()
 }
 
@@ -253,11 +329,11 @@ func (p *Parser) Primary() Expr {
 	case p.match(TokenTypeNumber):
 		nStr, ok := p.previous().Literal.(string)
 		if !ok {
-			panic(fmt.Errorf("expected unparsed number, got %v (line %d:%d)", p.previous().Literal, p.previous().Pos.Line, p.previous().Pos.Start))
+			panic(fmt.Errorf("expected unparsed number, got %s", p.previous()))
 		}
 		n, err := strconv.ParseFloat(nStr, 64)
 		if err != nil {
-			panic(fmt.Errorf("expected number, got %v (line %d:%d)", p.previous().Literal, p.previous().Pos.Line, p.previous().Pos.Start))
+			panic(fmt.Errorf("expected number, got %s", p.previous()))
 		}
 		return Literal{token: p.previous(), value: n}
 	case p.match(TokenTypeLeftParen):
@@ -272,7 +348,7 @@ func (p *Parser) Primary() Expr {
 	case p.match(TokenTypeIdentifier):
 		return Identifier{name: p.previous()}
 	}
-	panic(fmt.Errorf("expected expression, got %v (line %d:%d)", p.peek().Type, p.peek().Pos.Line, p.peek().Pos.Start))
+	panic(fmt.Errorf("expected expression, got %s", p.peek()))
 }
 
 func (p *Parser) Execute(env *Environment) {

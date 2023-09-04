@@ -23,6 +23,17 @@ func StmtToString(s Stmt) string {
 			stmtStrs = append(stmtStrs, StmtToString(stmt))
 		}
 		return "{" + strings.Join(stmtStrs, "\n") + "}"
+	case IfStmt:
+		return parenthesize(
+			parenthesize("if", v.condition) + "\n\t" +
+				StmtToString(v.thenBranch) + "\n\t" +
+				StmtToString(v.elseBranch),
+		)
+	case WhileStmt:
+		return parenthesize(
+			parenthesize("while", v.condition) + "\n\t" +
+				StmtToString(v.body),
+		)
 	}
 	return fmt.Sprintf("unknown stmt type: %v", s)
 }
@@ -70,16 +81,27 @@ func (b Block) Execute(env *Environment) {
 }
 
 type IfStmt struct {
-	conditional Expr
-	thenBranch  Stmt
-	elseBranch  Stmt
+	condition  Expr
+	thenBranch Stmt
+	elseBranch Stmt
 }
 
 func (s IfStmt) Execute(env *Environment) {
-	result := s.conditional.Evaluate(env)
+	result := s.condition.Evaluate(env)
 	if isTruthy(result) {
 		s.thenBranch.Execute(env)
 	} else if s.elseBranch != nil {
 		s.elseBranch.Execute(env)
+	}
+}
+
+type WhileStmt struct {
+	condition Expr
+	body      Stmt
+}
+
+func (s WhileStmt) Execute(env *Environment) {
+	for isTruthy(s.condition.Evaluate(env)) {
+		s.body.Execute(env)
 	}
 }
