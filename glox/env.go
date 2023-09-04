@@ -25,3 +25,12 @@ func (e *Environment) Declare(name string, val any) error {
 	e.vars[name] = val
 	return nil
 }
+
+func (e *Environment) Set(name string, val any) error {
+	_, ok := e.vars[name]
+	if !ok {
+		return fmt.Errorf("unknown var %s", name)
+	}
+	e.vars[name] = val
+	return nil
+}

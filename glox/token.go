@@ -135,6 +135,10 @@ type Pos struct {
 	End   int
 }
 
+func (p Pos) String() string {
+	return fmt.Sprintf("line %d [%d:%d]", p.Line, p.Start, p.End)
+}
+
 type Token struct {
 	Type    TokenType
 	Lexeme  string
@@ -143,7 +147,7 @@ type Token struct {
 }
 
 func (t Token) String() string {
-	return fmt.Sprintf("Line %d [%d:%d] Type %s '%s' %v", t.Pos.Line, t.Pos.Start, t.Pos.End, t.Type, t.Lexeme, t.Literal)
+	return fmt.Sprintf("(%s) Type %s '%s' %v", t.Pos, t.Type, t.Lexeme, t.Literal)
 }
 
 func isDigit(c byte) bool {

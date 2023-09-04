@@ -1,5 +1,8 @@
 print "one";
 print true;
 print 2 + 1;
-var x = 3 *123;
+var x = 3 * 123;
 print x;
+var y = x = 5;
+print x;
+print y;

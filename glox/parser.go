@@ -92,7 +92,7 @@ func (p *Parser) VarDecl() Stmt {
 	if err := p.consume(TokenTypeSemicolon); err != nil {
 		panic(err)
 	}
-	return VarDecl{name: identifier.Lexeme, initializer: initializer}
+	return VarDecl{name: identifier, initializer: initializer}
 }
 
 func (p *Parser) Statement() Stmt {
@@ -125,7 +125,20 @@ func (p *Parser) Expression() Expr {
 	for p.check(TokenTypeComment) {
 		p.advance()
 	}
-	return p.Equality()
+	return p.Assignment()
+}
+
+func (p *Parser) Assignment() Expr {
+	expr := p.Equality()
+	if p.match(TokenTypeEqual) {
+		val := p.Assignment()
+		if exprVar, ok := expr.(Identifier); ok {
+			name := exprVar.name
+			return Assign{name: name, val: val}
+		}
+		panic(fmt.Errorf("invalid assign target %s (%s)", ExprToString(expr), expr.Pos()))
+	}
+	return expr
 }
 
 func (p *Parser) Equality() Expr {
@@ -140,7 +153,7 @@ func (p *Parser) Equality() Expr {
 
 func (p *Parser) Comparison() Expr {
 	expr := p.Term()
-	for p.match(TokenTypeGreater, TokenTypeEqual, TokenTypeLess, TokenTypeLessEqual) {
+	for p.match(TokenTypeGreater, TokenTypeEqualEqual, TokenTypeLess, TokenTypeLessEqual) {
 		operator := p.previous()
 		right := p.Term()
 		expr = BinaryExpr{left: expr, operator: operator, right: right}
@@ -180,13 +193,13 @@ func (p *Parser) Unary() Expr {
 func (p *Parser) Primary() Expr {
 	switch {
 	case p.match(TokenTypeFalse):
-		return Literal{value: false}
+		return Literal{token: p.previous(), value: false}
 	case p.match(TokenTypeTrue):
-		return Literal{value: true}
+		return Literal{token: p.previous(), value: true}
 	case p.match(TokenTypeNil):
-		return Literal{value: nil}
+		return Literal{token: p.previous(), value: nil}
 	case p.match(TokenTypeString):
-		return Literal{value: p.previous().Literal}
+		return Literal{token: p.previous(), value: p.previous().Literal}
 	case p.match(TokenTypeNumber):
 		nStr, ok := p.previous().Literal.(string)
 		if !ok {
@@ -196,17 +209,18 @@ func (p *Parser) Primary() Expr {
 		if err != nil {
 			panic(fmt.Errorf("expected number, got %v (line %d:%d)", p.previous().Literal, p.previous().Pos.Line, p.previous().Pos.Start))
 		}
-		return Literal{value: n}
+		return Literal{token: p.previous(), value: n}
 	case p.match(TokenTypeLeftParen):
+		leftParen := p.previous()
 		expr := p.Expression()
 		err := p.consume(TokenTypeRightParen)
 		if err != nil {
 			// TODO: sync to next statement boundary (semicolon, keyword)
 			panic(err)
 		}
-		return Grouping{expr: expr}
+		return Grouping{left: leftParen, expr: expr, right: p.previous()}
 	case p.match(TokenTypeIdentifier):
-		return Identifier{name: p.previous().Lexeme}
+		return Identifier{name: p.previous()}
 	}
 	panic(fmt.Errorf("expected expression, got %v (line %d:%d)", p.peek().Type, p.peek().Pos.Line, p.peek().Pos.Start))
 }
@@ -215,5 +229,12 @@ func (p *Parser) Execute(env *Environment) {
 	statements := p.Program()
 	for _, stmt := range statements {
 		stmt.Execute(env)
+	}
+}
+
+func (p *Parser) PrintAST() {
+	statements := p.Program()
+	for _, stmt := range statements {
+		fmt.Println(StmtToString(stmt))
 	}
 }
