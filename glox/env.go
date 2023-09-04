@@ -3,18 +3,26 @@ package glox
 import "fmt"
 
 type Environment struct {
-	vars map[string]any
+	enclosing *Environment
+	vars      map[string]any
 }
 
-func NewEnvironment() *Environment {
+func NewEnvironment(enclosing *Environment) *Environment {
 	return &Environment{
-		vars: map[string]any{},
+		enclosing: enclosing,
+		vars:      map[string]any{},
 	}
 }
 
 func (e *Environment) Get(name string) (any, bool) {
 	v, ok := e.vars[name]
-	return v, ok
+	if ok {
+		return v, ok
+	}
+	if e.enclosing == nil {
+		return v, ok
+	}
+	return e.enclosing.Get(name)
 }
 
 func (e *Environment) Declare(name string, val any) error {
@@ -28,9 +36,12 @@ func (e *Environment) Declare(name string, val any) error {
 
 func (e *Environment) Set(name string, val any) error {
 	_, ok := e.vars[name]
-	if !ok {
+	if ok {
+		e.vars[name] = val
+		return nil
+	}
+	if e.enclosing == nil {
 		return fmt.Errorf("unknown var %s", name)
 	}
-	e.vars[name] = val
-	return nil
+	return e.Set(name, val)
 }

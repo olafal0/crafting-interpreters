@@ -1,6 +1,9 @@
 package glox
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type Stmt interface {
 	Execute(env *Environment)
@@ -14,6 +17,12 @@ func StmtToString(s Stmt) string {
 		return parenthesize("expr", v.expr)
 	case VarDecl:
 		return parenthesize("var "+v.name.Lexeme, v.initializer)
+	case Block:
+		stmtStrs := make([]string, 0, len(v.statements))
+		for _, stmt := range v.statements {
+			stmtStrs = append(stmtStrs, StmtToString(stmt))
+		}
+		return "{" + strings.Join(stmtStrs, "\n") + "}"
 	}
 	return fmt.Sprintf("unknown stmt type: %v", s)
 }
@@ -46,5 +55,16 @@ func (e VarDecl) Execute(env *Environment) {
 	}
 	if err := env.Declare(e.name.Lexeme, v); err != nil {
 		panic(err)
+	}
+}
+
+type Block struct {
+	statements []Stmt
+}
+
+func (b Block) Execute(env *Environment) {
+	newEnv := NewEnvironment(env)
+	for _, stmt := range b.statements {
+		stmt.Execute(newEnv)
 	}
 }

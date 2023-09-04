@@ -65,7 +65,7 @@ func (p *Parser) consume(t TokenType) error {
 		p.advance()
 		return nil
 	}
-	return fmt.Errorf("expected token type %v, got %v (line %d:%d)", t, next.Type, next.Pos.Line, next.Pos.Start)
+	return fmt.Errorf("expected %v token, got %v (line %d:%d)", t, next.Type, next.Pos.Line, next.Pos.Start)
 }
 
 func (p *Parser) Program() []Stmt {
@@ -99,7 +99,21 @@ func (p *Parser) Statement() Stmt {
 	if p.match(TokenTypePrint) {
 		return p.PrintStmt()
 	}
+	if p.match(TokenTypeLeftBrace) {
+		return p.Block()
+	}
 	return p.ExprStmt()
+}
+
+func (p *Parser) Block() Stmt {
+	statements := []Stmt{}
+	for !p.check(TokenTypeRightBrace) && !p.isAtEnd() {
+		statements = append(statements, p.Decl())
+	}
+	if err := p.consume(TokenTypeRightBrace); err != nil {
+		panic(err)
+	}
+	return Block{statements: statements}
 }
 
 func (p *Parser) ExprStmt() Stmt {
