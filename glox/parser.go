@@ -96,6 +96,9 @@ func (p *Parser) VarDecl() Stmt {
 }
 
 func (p *Parser) Statement() Stmt {
+	if p.match(TokenTypeIf) {
+		return p.IfStmt()
+	}
 	if p.match(TokenTypePrint) {
 		return p.PrintStmt()
 	}
@@ -103,6 +106,19 @@ func (p *Parser) Statement() Stmt {
 		return p.Block()
 	}
 	return p.ExprStmt()
+}
+
+func (p *Parser) IfStmt() Stmt {
+	// Don't consume left paren here, to support if statements without parens
+	condition := p.Expression()
+	// Don't consume right paren
+
+	thenBranch := p.Statement()
+	var elseBranch Stmt
+	if p.match(TokenTypeElse) {
+		elseBranch = p.Statement()
+	}
+	return IfStmt{conditional: condition, thenBranch: thenBranch, elseBranch: elseBranch}
 }
 
 func (p *Parser) Block() Stmt {
@@ -143,7 +159,7 @@ func (p *Parser) Expression() Expr {
 }
 
 func (p *Parser) Assignment() Expr {
-	expr := p.Equality()
+	expr := p.LogicOr()
 	if p.match(TokenTypeEqual) {
 		val := p.Assignment()
 		if exprVar, ok := expr.(Identifier); ok {
@@ -151,6 +167,26 @@ func (p *Parser) Assignment() Expr {
 			return Assign{name: name, val: val}
 		}
 		panic(fmt.Errorf("invalid assign target %s (%s)", ExprToString(expr), expr.Pos()))
+	}
+	return expr
+}
+
+func (p *Parser) LogicOr() Expr {
+	expr := p.LogicAnd()
+	for p.match(TokenTypeOr) {
+		operator := p.previous()
+		right := p.LogicAnd()
+		expr = Logical{left: expr, operator: operator, right: right}
+	}
+	return expr
+}
+
+func (p *Parser) LogicAnd() Expr {
+	expr := p.Equality()
+	for p.match(TokenTypeAnd) {
+		operator := p.previous()
+		right := p.Equality()
+		expr = Logical{left: expr, operator: operator, right: right}
 	}
 	return expr
 }

@@ -1,25 +1,8 @@
-var a = "global a";
-var b = "global b";
-var c = "global c";
-{
-  var a = "outer a";
-  var b = "outer b";
-  {
-    var a = "inner a";
-    print a;
-    print b;
-    print c;
-  }
-  print a;
-  print b;
-  print c;
+var x = 2 * 3;
+if x and nil {
+  print "yes";
 }
-print a;
-print b;
-print c;
-
-var x = 1;
-{
-  var x = x + 2;
-  print x;
+else if true {
+  print "no";
 }
+print nil or "not nil";

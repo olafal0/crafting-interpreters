@@ -175,6 +175,36 @@ func (e Assign) Pos() Pos {
 	}
 }
 
+type Logical struct {
+	left     Expr
+	operator Token
+	right    Expr
+}
+
+func (e Logical) Evaluate(env *Environment) any {
+	left := e.left.Evaluate(env)
+
+	switch e.operator.Type {
+	case TokenTypeOr:
+		if isTruthy(left) {
+			return left
+		}
+	case TokenTypeAnd:
+		if !isTruthy(left) {
+			return left
+		}
+	}
+	return e.right.Evaluate(env)
+}
+
+func (e Logical) Pos() Pos {
+	return Pos{
+		Line:  e.left.Pos().Line,
+		Start: e.left.Pos().Start,
+		End:   e.right.Pos().End,
+	}
+}
+
 func isTruthy(v any) bool {
 	if v == nil {
 		return false

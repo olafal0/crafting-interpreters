@@ -68,3 +68,18 @@ func (b Block) Execute(env *Environment) {
 		stmt.Execute(newEnv)
 	}
 }
+
+type IfStmt struct {
+	conditional Expr
+	thenBranch  Stmt
+	elseBranch  Stmt
+}
+
+func (s IfStmt) Execute(env *Environment) {
+	result := s.conditional.Evaluate(env)
+	if isTruthy(result) {
+		s.thenBranch.Execute(env)
+	} else if s.elseBranch != nil {
+		s.elseBranch.Execute(env)
+	}
+}
