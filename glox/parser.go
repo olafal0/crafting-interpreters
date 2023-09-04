@@ -1,6 +1,9 @@
 package glox
 
-import "fmt"
+import (
+	"fmt"
+	"strconv"
+)
 
 type Parser struct {
 	tokens  []Token
@@ -130,8 +133,18 @@ func (p *Parser) primary() Expr {
 		return Literal{value: true}
 	case p.match(TokenTypeNil):
 		return Literal{value: nil}
-	case p.match(TokenTypeNumber, TokenTypeString):
+	case p.match(TokenTypeString):
 		return Literal{value: p.previous().Literal}
+	case p.match(TokenTypeNumber):
+		nStr, ok := p.previous().Literal.(string)
+		if !ok {
+			panic(fmt.Errorf("expected unparsed number, got %v (line %d:%d)", p.previous().Literal, p.previous().Pos.Line, p.previous().Pos.Start))
+		}
+		n, err := strconv.ParseFloat(nStr, 64)
+		if err != nil {
+			panic(fmt.Errorf("expected number, got %v (line %d:%d)", p.previous().Literal, p.previous().Pos.Line, p.previous().Pos.Start))
+		}
+		return Literal{value: n}
 	case p.match(TokenTypeLeftParen):
 		expr := p.Expression()
 		err := p.consume(TokenTypeRightParen)
