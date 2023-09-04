@@ -5,8 +5,43 @@ import (
 	"strings"
 )
 
+type Stmt interface {
+	Execute(env *Environment)
+}
+
+type PrintStmt struct {
+	expr Expr
+}
+
+func (p PrintStmt) Execute(env *Environment) {
+	fmt.Println(p.expr.Evaluate(env))
+}
+
+type ExprStmt struct {
+	expr Expr
+}
+
+func (e ExprStmt) Execute(env *Environment) {
+	e.expr.Evaluate(env)
+}
+
+type VarDecl struct {
+	name        string
+	initializer Expr
+}
+
+func (e VarDecl) Execute(env *Environment) {
+	var v any = nil
+	if e.initializer != nil {
+		v = e.initializer.Evaluate(env)
+	}
+	if err := env.Declare(e.name, v); err != nil {
+		panic(err)
+	}
+}
+
 type Expr interface {
-	Evaluate() any
+	Evaluate(env *Environment) any
 }
 
 func parenthesize(name string, exprs ...Expr) string {
@@ -43,8 +78,8 @@ type UnaryExpr struct {
 	right    Expr
 }
 
-func (e UnaryExpr) Evaluate() any {
-	right := e.right.Evaluate()
+func (e UnaryExpr) Evaluate(env *Environment) any {
+	right := e.right.Evaluate(env)
 	switch e.operator.Type {
 	case TokenTypeMinus:
 		// TODO: check for runtime errors (can only negate numbers)
@@ -61,9 +96,9 @@ type BinaryExpr struct {
 	right    Expr
 }
 
-func (e BinaryExpr) Evaluate() any {
-	left := e.left.Evaluate()
-	right := e.right.Evaluate()
+func (e BinaryExpr) Evaluate(env *Environment) any {
+	left := e.left.Evaluate(env)
+	right := e.right.Evaluate(env)
 
 	// TODO: check for runtime errors
 	switch e.operator.Type {
@@ -105,7 +140,7 @@ type Literal struct {
 	value interface{}
 }
 
-func (e Literal) Evaluate() any {
+func (e Literal) Evaluate(env *Environment) any {
 	return e.value
 }
 
@@ -113,8 +148,20 @@ type Grouping struct {
 	expr Expr
 }
 
-func (e Grouping) Evaluate() any {
-	return e.expr.Evaluate()
+func (e Grouping) Evaluate(env *Environment) any {
+	return e.expr.Evaluate(env)
+}
+
+type Identifier struct {
+	name string
+}
+
+func (e Identifier) Evaluate(env *Environment) any {
+	v, ok := env.Get(e.name)
+	if !ok {
+		panic(fmt.Errorf("unknown identifier %s", e.name))
+	}
+	return v
 }
 
 func isTruthy(v any) bool {

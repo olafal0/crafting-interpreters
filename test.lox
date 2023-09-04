@@ -1,2 +1,5 @@
-// Test comment
-(123 - 5) * 3.5
+print "one";
+print true;
+print 2 + 1;
+var x = 3 *123;
+print x;

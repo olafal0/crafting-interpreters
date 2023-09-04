@@ -8,12 +8,14 @@ import (
 type Parser struct {
 	tokens  []Token
 	current int
+	env     *Environment
 }
 
 func NewParser(tokens []Token) *Parser {
 	return &Parser{
 		tokens:  tokens,
 		current: 0,
+		env:     NewEnvironment(),
 	}
 }
 
@@ -66,6 +68,58 @@ func (p *Parser) consume(t TokenType) error {
 		return nil
 	}
 	return fmt.Errorf("expected token type %v, got %v (line %d:%d)", t, next.Type, next.Pos.Line, next.Pos.Start)
+}
+
+func (p *Parser) Program() []Stmt {
+	stmts := []Stmt{}
+	for !p.isAtEnd() {
+		stmts = append(stmts, p.Decl())
+	}
+	return stmts
+}
+
+func (p *Parser) Decl() Stmt {
+	if p.match(TokenTypeVar) {
+		return p.VarDecl()
+	}
+	return p.Statement()
+}
+
+func (p *Parser) VarDecl() Stmt {
+	identifier := p.advance()
+	var initializer Expr
+	if p.match(TokenTypeEqual) {
+		initializer = p.Expression()
+	}
+	if err := p.consume(TokenTypeSemicolon); err != nil {
+		panic(err)
+	}
+	return VarDecl{name: identifier.Lexeme, initializer: initializer}
+}
+
+func (p *Parser) Statement() Stmt {
+	if p.match(TokenTypePrint) {
+		return p.PrintStmt()
+	}
+	return p.ExprStmt()
+}
+
+func (p *Parser) ExprStmt() Stmt {
+	expr := p.Expression()
+	err := p.consume(TokenTypeSemicolon)
+	if err != nil {
+		panic(err)
+	}
+	return ExprStmt{expr: expr}
+}
+
+func (p *Parser) PrintStmt() Stmt {
+	expr := p.Expression()
+	err := p.consume(TokenTypeSemicolon)
+	if err != nil {
+		panic(err)
+	}
+	return PrintStmt{expr: expr}
 }
 
 func (p *Parser) Expression() Expr {
@@ -153,10 +207,19 @@ func (p *Parser) primary() Expr {
 			panic(err)
 		}
 		return Grouping{expr: expr}
+	case p.match(TokenTypeIdentifier):
+		return Identifier{name: p.previous().Lexeme}
 	}
 	panic(fmt.Errorf("expected expression, got %v (line %d:%d)", p.peek().Type, p.peek().Pos.Line, p.peek().Pos.Start))
 }
 
-func (p *Parser) Parse() Expr {
-	return p.Expression()
+func (p *Parser) Parse() []Stmt {
+	return p.Program()
+}
+
+func (p *Parser) Execute() {
+	statements := p.Parse()
+	for _, stmt := range statements {
+		stmt.Execute(p.env)
+	}
 }
