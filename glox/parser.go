@@ -8,14 +8,12 @@ import (
 type Parser struct {
 	tokens  []Token
 	current int
-	env     *Environment
 }
 
 func NewParser(tokens []Token) *Parser {
 	return &Parser{
 		tokens:  tokens,
 		current: 0,
-		env:     NewEnvironment(),
 	}
 }
 
@@ -161,25 +159,25 @@ func (p *Parser) Term() Expr {
 }
 
 func (p *Parser) Factor() Expr {
-	expr := p.unary()
+	expr := p.Unary()
 	for p.match(TokenTypeSlash, TokenTypeStar) {
 		operator := p.previous()
-		right := p.unary()
+		right := p.Unary()
 		expr = BinaryExpr{left: expr, operator: operator, right: right}
 	}
 	return expr
 }
 
-func (p *Parser) unary() Expr {
+func (p *Parser) Unary() Expr {
 	if p.match(TokenTypeBang, TokenTypeMinus) {
 		operator := p.previous()
-		right := p.unary()
+		right := p.Unary()
 		return UnaryExpr{operator: operator, right: right}
 	}
-	return p.primary()
+	return p.Primary()
 }
 
-func (p *Parser) primary() Expr {
+func (p *Parser) Primary() Expr {
 	switch {
 	case p.match(TokenTypeFalse):
 		return Literal{value: false}
@@ -213,13 +211,9 @@ func (p *Parser) primary() Expr {
 	panic(fmt.Errorf("expected expression, got %v (line %d:%d)", p.peek().Type, p.peek().Pos.Line, p.peek().Pos.Start))
 }
 
-func (p *Parser) Parse() []Stmt {
-	return p.Program()
-}
-
-func (p *Parser) Execute() {
-	statements := p.Parse()
+func (p *Parser) Execute(env *Environment) {
+	statements := p.Program()
 	for _, stmt := range statements {
-		stmt.Execute(p.env)
+		stmt.Execute(env)
 	}
 }

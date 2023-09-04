@@ -36,6 +36,7 @@ func run(source []byte) error {
 		return err
 	}
 	parser := glox.NewParser(tokens)
-	parser.Execute()
+	env := glox.NewEnvironment()
+	parser.Execute(env)
 	return nil
 }
