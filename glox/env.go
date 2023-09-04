@@ -43,5 +43,5 @@ func (e *Environment) Set(name string, val any) error {
 	if e.enclosing == nil {
 		return fmt.Errorf("unknown var %s", name)
 	}
-	return e.Set(name, val)
+	return e.enclosing.Set(name, val)
 }
