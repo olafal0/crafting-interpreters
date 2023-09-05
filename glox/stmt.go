@@ -18,10 +18,7 @@ func StmtToString(s Stmt) string {
 	case VarDecl:
 		return parenthesize("var "+v.name.Lexeme, v.initializer)
 	case Block:
-		stmtStrs := make([]string, 0, len(v.statements))
-		for _, stmt := range v.statements {
-			stmtStrs = append(stmtStrs, StmtToString(stmt))
-		}
+		stmtStrs := StmtsToStrings(v.statements)
 		return "{" + strings.Join(stmtStrs, "\n") + "}"
 	case IfStmt:
 		return parenthesize(
@@ -34,8 +31,19 @@ func StmtToString(s Stmt) string {
 			parenthesize("while", v.condition) + "\n\t" +
 				StmtToString(v.body),
 		)
+	case FuncDecl:
+		stmtStrs := StmtsToStrings(v.body)
+		return parenthesize("fun " + v.name.Lexeme + "\n" + strings.Join(stmtStrs, "\n"))
 	}
 	return fmt.Sprintf("unknown stmt type: %v", s)
+}
+
+func StmtsToStrings(statements []Stmt) []string {
+	strs := make([]string, 0, len(statements))
+	for _, stmt := range statements {
+		strs = append(strs, StmtToString(stmt))
+	}
+	return strs
 }
 
 type PrintStmt struct {
@@ -67,6 +75,17 @@ func (e VarDecl) Execute(env *Environment) {
 	if err := env.Declare(e.name.Lexeme, v); err != nil {
 		panic(err)
 	}
+}
+
+type FuncDecl struct {
+	name   Token
+	params []Token
+	body   []Stmt
+}
+
+func (f FuncDecl) Execute(env *Environment) {
+	function := DefinedFunc{decl: f}
+	env.Declare(f.name.Lexeme, function)
 }
 
 type Block struct {

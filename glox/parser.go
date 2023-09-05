@@ -84,10 +84,50 @@ func (p *Parser) Program() []Stmt {
 }
 
 func (p *Parser) Decl() Stmt {
+	if p.match(TokenTypeFun) {
+		return p.Function("function")
+	}
 	if p.match(TokenTypeVar) {
 		return p.VarDecl()
 	}
 	return p.Statement()
+}
+
+func (p *Parser) Function(kind string) Stmt {
+	if err := p.consume(TokenTypeIdentifier); err != nil {
+		panic(err)
+	}
+	name := p.previous()
+	if err := p.consume(TokenTypeLeftParen); err != nil {
+		panic(err)
+	}
+	params := []Token{}
+	if !p.check(TokenTypeRightParen) {
+		for {
+			if len(params) >= 255 {
+				panic(fmt.Errorf("cannot call %s with more than 255 parameters", name))
+			}
+			if err := p.consume(TokenTypeIdentifier); err != nil {
+				panic(fmt.Errorf("%s: expected parameter name", p.previous()))
+			}
+			params = append(params, p.previous())
+			if !p.match(TokenTypeComma) {
+				break
+			}
+		}
+	}
+	if err := p.consume(TokenTypeRightParen); err != nil {
+		panic(err)
+	}
+	if err := p.consume(TokenTypeLeftBrace); err != nil {
+		panic(err)
+	}
+	body := (p.Block()).(Block)
+	return FuncDecl{
+		name:   name,
+		params: params,
+		body:   body.statements,
+	}
 }
 
 func (p *Parser) VarDecl() Stmt {
@@ -313,7 +353,43 @@ func (p *Parser) Unary() Expr {
 		right := p.Unary()
 		return UnaryExpr{operator: operator, right: right}
 	}
-	return p.Primary()
+	return p.Call()
+}
+
+func (p *Parser) finishCall(callee Expr) Expr {
+	args := []Expr{}
+	if !p.check(TokenTypeRightParen) {
+		for {
+			args = append(args, p.Expression())
+			if !p.match(TokenTypeComma) {
+				break
+			}
+			if len(args) > 255 {
+				panic(fmt.Errorf("cannot exceed 255 arguments: %s", p.previous()))
+			}
+		}
+	}
+	err := p.consume(TokenTypeRightParen)
+	if err != nil {
+		panic(err)
+	}
+	return Call{
+		callee: callee,
+		paren:  p.previous(),
+		args:   args,
+	}
+}
+
+func (p *Parser) Call() Expr {
+	expr := p.Primary()
+	for {
+		if p.match(TokenTypeLeftParen) {
+			expr = p.finishCall(expr)
+		} else {
+			break
+		}
+	}
+	return expr
 }
 
 func (p *Parser) Primary() Expr {
@@ -352,6 +428,7 @@ func (p *Parser) Primary() Expr {
 }
 
 func (p *Parser) Execute(env *Environment) {
+	env.Declare("clock", ClockFunc{})
 	statements := p.Program()
 	for _, stmt := range statements {
 		stmt.Execute(env)

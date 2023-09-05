@@ -27,6 +27,8 @@ func ExprToString(e Expr) string {
 		return fmt.Sprintf("(id %s)", v.name.Lexeme)
 	case Assign:
 		return parenthesize("set "+v.name.Lexeme, v.val)
+	case Call:
+		return parenthesize("call "+ExprToString(v.callee), v.args...)
 	}
 	return fmt.Sprintf("unknown expr type: %v", e)
 }
@@ -202,6 +204,35 @@ func (e Logical) Pos() Pos {
 		Line:  e.left.Pos().Line,
 		Start: e.left.Pos().Start,
 		End:   e.right.Pos().End,
+	}
+}
+
+type Call struct {
+	callee Expr
+	paren  Token
+	args   []Expr
+}
+
+func (e Call) Evaluate(env *Environment) any {
+	callee := e.callee.Evaluate(env)
+	args := []any{}
+	for _, arg := range e.args {
+		args = append(args, arg.Evaluate(env))
+	}
+	if function, ok := callee.(Caller); ok {
+		if function.Arity() != len(args) {
+			panic(fmt.Errorf("expected %d args but got %d in call to %s", function.Arity(), len(args), e.callee))
+		}
+		return function.Call(env, args)
+	}
+	panic(fmt.Errorf("uncallable expression: %v", callee))
+}
+
+func (e Call) Pos() Pos {
+	return Pos{
+		Line:  e.callee.Pos().Line,
+		Start: e.callee.Pos().Start,
+		End:   e.paren.Pos.End,
 	}
 }
 
